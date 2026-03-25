@@ -1,0 +1,8 @@
+node_modules/
+.next/
+.env.local
+public/snapshots/
+*.log
+.DS_Store
+.vscode/
+.idea/
