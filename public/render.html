@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>VDC Renderer</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body, #cesiumContainer { width: 100%; height: 100%; overflow: hidden; background: #000; }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <script>
+    (async function () {
+      try {
+        const MISSION = window.__MISSION_DATA__;
+        if (!MISSION) throw new Error('No __MISSION_DATA__ found on window');
+
+        // Set Google Maps API key for photorealistic tiles
+        if (MISSION.google_api_key) {
+          Cesium.GoogleMaps.defaultApiKey = MISSION.google_api_key;
+        }
+
+        // Initialise viewer — no default imagery layer (Google 3D tiles below)
+        const viewer = new Cesium.Viewer('cesiumContainer', {
+          imageryProvider: false,
+          baseLayerPicker: false,
+          geocoder: false,
+          homeButton: false,
+          sceneModePicker: false,
+          navigationHelpButton: false,
+          animation: false,
+          timeline: false,
+          fullscreenButton: false,
+          vrButton: false,
+          infoBox: false,
+          selectionIndicator: false,
+          shadows: false,
+          terrainShadows: Cesium.ShadowMode.DISABLED,
+          requestRenderMode: false
+        });
+
+        // Set FOV to 100 degrees
+        viewer.camera.frustum.fov = Cesium.Math.toRadians(100);
+
+        // Maximum tile detail before capture
+        viewer.scene.globe.maximumScreenSpaceError = 1.0;
+
+        // Load Google Photorealistic 3D Tiles
+        const tileset = await Cesium.createGooglePhotorealistic3DTileset();
+        viewer.scene.primitives.add(tileset);
+
+        // Hide the default globe — 3D tiles provide the surface
+        viewer.scene.globe.show = false;
+
+        // Draw property boundary — all rings supported (outer + holes)
+        const { geometry } = MISSION;
+        const rings = geometry.coordinates || [];
+        for (const ring of rings) {
+          const positions = ring.map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat));
+          viewer.entities.add({
+            polyline: {
+              positions,
+              width: 4,
+              material: Cesium.Color.YELLOW,
+              clampToGround: true
+            }
+          });
+        }
+
+        // Bounding sphere derived from outer ring
+        const outerRing = rings[0] || [];
+        const bsPositions = outerRing.map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat));
+        const boundingSphere = Cesium.BoundingSphere.fromPoints(bsPositions);
+
+        // Shot definitions: nadir + 4 cardinal directions
+        const shots = [
+          { name: 'nadir',    heading:   0, pitch: -89.9, rangeMultiplier: 2.0 },
+          { name: 'cardinal', heading:   0, pitch:   -35, rangeMultiplier: 2.5 },
+          { name: 'east',     heading:  90, pitch:   -35, rangeMultiplier: 2.5 },
+          { name: 'south',    heading: 180, pitch:   -35, rangeMultiplier: 2.5 },
+          { name: 'west',     heading: 270, pitch:   -35, rangeMultiplier: 2.5 }
+        ];
+
+        // Wait for 3D tiles to stabilise: 3 consecutive ticks of 300 ms, 120 s timeout
+        function waitForTiles() {
+          const STABLE_TICKS  = 3;
+          const TICK_MS       = 300;
+          const TIMEOUT_MS    = 120000;
+          let stable          = 0;
+          const start         = Date.now();
+
+          return new Promise((resolve, reject) => {
+            function tick() {
+              if (Date.now() - start > TIMEOUT_MS) {
+                reject(new Error('Tile settle timeout (120 s)'));
+                return;
+              }
+              if (tileset.tilesLoaded) {
+                stable++;
+                if (stable >= STABLE_TICKS) { resolve(); return; }
+              } else {
+                stable = 0;
+              }
+              setTimeout(tick, TICK_MS);
+            }
+            setTimeout(tick, TICK_MS);
+          });
+        }
+
+        // Fly to a shot instantly (duration: 0) then resolve on completion
+        function flyToShot(shot) {
+          return new Promise((resolve) => {
+            viewer.camera.flyToBoundingSphere(boundingSphere, {
+              offset: new Cesium.HeadingPitchRange(
+                Cesium.Math.toRadians(shot.heading),
+                Cesium.Math.toRadians(shot.pitch),
+                boundingSphere.radius * shot.rangeMultiplier
+              ),
+              duration: 0,
+              complete: resolve
+            });
+          });
+        }
+
+        // Sequential shot loop
+        for (const shot of shots) {
+          await flyToShot(shot);
+          await waitForTiles();
+          await window.capturePass(shot.name);
+        }
+
+        console.log('MISSION_COMPLETE');
+      } catch (err) {
+        console.error('Render error:', err.message);
+        console.log('MISSION_ERROR');
+      }
+    })();
+  </script>
+</body>
+</html>

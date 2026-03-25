@@ -1,1 +1,16 @@
-{"name": "virtual-drone-creator", "version": "1.0.0", "dependencies": {"cesium": "^1.89.0", "puppeteer": "^20.3.7", "sharp": "^0.30.8", "next": "^12.0.7"}}
+{
+  "name": "virtual-drone-creator",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "cesium": "^1.114.0",
+    "next": "14.2.35",
+    "puppeteer": "^24.4.0",
+    "sharp": "^0.34.1"
+  }
+}

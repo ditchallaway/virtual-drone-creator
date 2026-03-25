@@ -1,0 +1,10 @@
+# dependencies & build output
+node_modules/
+.next/
+
+# snapshot output — volume-mounted in Docker
+public/snapshots/*
+!public/snapshots/.gitkeep
+
+# local environment
+.env.local
