@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  vdc:
+    image: your-docker-image-here
+    ports:
+      - "3000:3000"
+    environment:
+      - ENV_VAR1=value1
+      - ENV_VAR2=value2
+    volumes:
+      - snapshots:/path/to/snapshots
+
+volumes:
+  snapshots:
