@@ -4,3 +4,5 @@ node_modules/
 public/snapshots/
 *.log
 .DS_Store
+.vscode/
+.idea/

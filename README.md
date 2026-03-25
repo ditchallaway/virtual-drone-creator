@@ -1,41 +1,25 @@
-# virtual-drone-creator
+# Virtual Drone Creator
 
-A minimal service that renders **5 PNG aerial snapshots** of a property boundary using Cesium + Google Photorealistic 3D Tiles, driven by Puppeteer, and served via Next.js.
-
-**What it does:**
-- Accepts a GeoJSON polygon boundary and centroid
-- Renders nadir (top-down) and 4 cardinal (N/E/S/W) shots with a yellow boundary overlay
-- Returns PNG file paths and URLs for each shot
-
-**What it does NOT do:** no PSD output, no road overlays, no push notifications, no external uploads.
+Headless rendering service for property aerial photography.
 
 ---
 
-## Quick Start (Docker)
+## Quick Start
 
 ```bash
-# 1. Copy environment file
-cp .env.local.example .env.local
-# Edit .env.local and set NEXT_PUBLIC_GOOGLE_API_KEY
-
-# 2. Start the service
-docker-compose up
+docker compose up --build
 ```
 
-The API is available at `http://localhost:3000`.
+The service starts on **http://localhost:3000**.
 
 ---
 
-## Environment Variables
+## Configuration
 
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_GOOGLE_API_KEY` | Yes | Google Maps / Photorealistic 3D Tiles API key |
-
-Create a `.env.local` file at the project root:
+Copy `.env.local` and fill in your Google Maps Platform API key (must have the **Map Tiles API** enabled):
 
 ```
-NEXT_PUBLIC_GOOGLE_API_KEY=your_key_here
+NEXT_PUBLIC_GOOGLE_API_KEY=your_actual_google_api_key_here
 ```
 
 ---
@@ -44,88 +28,101 @@ NEXT_PUBLIC_GOOGLE_API_KEY=your_key_here
 
 ### `POST /api/render`
 
-Renders 5 PNG shots for a property boundary and returns their paths.
+Renders five PNG aerial views of a property boundary and returns their paths.
 
-#### Request Body (JSON)
+#### Request
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `order_id` | string | ✅ | Unique identifier for this render job |
+| `centroid` | `[lon, lat]` | ✅ | Property centroid in WGS 84 |
+| `geometry` | GeoJSON Polygon | ✅ | Outer ring of the property boundary |
+
+**Example request:**
 
 ```json
 {
-  "order_id": "job-001",
-  "centroid": [-105.0, 40.0],
+  "order_id": "test_001",
+  "centroid": [-116.4869, 48.3322],
   "geometry": {
     "type": "Polygon",
-    "coordinates": [
-      [
-        [-105.001, 40.001],
-        [-104.999, 40.001],
-        [-104.999, 39.999],
-        [-105.001, 39.999],
-        [-105.001, 40.001]
-      ]
-    ]
+    "coordinates": [[
+      [-116.486, 48.331],
+      [-116.487, 48.331],
+      [-116.487, 48.332],
+      [-116.486, 48.332],
+      [-116.486, 48.331]
+    ]]
   }
 }
 ```
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `order_id` | string | Yes | Unique job identifier; used as the snapshot folder name |
-| `centroid` | `[lon, lat]` | Yes | WGS84 centre point of the property |
-| `geometry` | GeoJSON Polygon | Yes | Boundary polygon (outer ring required) |
-
-#### Successful Response (200)
+**Example success response:**
 
 ```json
 {
   "status": "success",
-  "order_id": "job-001",
+  "order_id": "test_001",
   "shots": {
-    "nadir":    { "png_path": "/abs/path/nadir.png",    "png_url": "/snapshots/job-001/nadir.png" },
-    "cardinal": { "png_path": "/abs/path/cardinal.png", "png_url": "/snapshots/job-001/cardinal.png" },
-    "east":     { "png_path": "/abs/path/east.png",     "png_url": "/snapshots/job-001/east.png" },
-    "south":    { "png_path": "/abs/path/south.png",    "png_url": "/snapshots/job-001/south.png" },
-    "west":     { "png_path": "/abs/path/west.png",     "png_url": "/snapshots/job-001/west.png" }
+    "nadir":    { "png_path": "/app/public/snapshots/test_001/nadir.png",    "png_url": "/snapshots/test_001/nadir.png" },
+    "cardinal": { "png_path": "/app/public/snapshots/test_001/cardinal.png", "png_url": "/snapshots/test_001/cardinal.png" },
+    "east":     { "png_path": "/app/public/snapshots/test_001/east.png",     "png_url": "/snapshots/test_001/east.png" },
+    "south":    { "png_path": "/app/public/snapshots/test_001/south.png",    "png_url": "/snapshots/test_001/south.png" },
+    "west":     { "png_path": "/app/public/snapshots/test_001/west.png",     "png_url": "/snapshots/test_001/west.png" }
   },
   "timestamp": "2026-03-25T11:00:00.000Z"
 }
 ```
 
-#### Error Responses
+**Example error response:**
 
-| Status | Meaning |
-|---|---|
-| `400` | Missing required fields (`order_id`, `centroid`, or `geometry`) |
-| `405` | Method not allowed (only POST is accepted) |
-| `500` | Render failure (browser-side error or timeout) |
-
----
-
-## Shot Definitions
-
-| Shot name | Heading | Pitch | Description |
-|---|---|---|---|
-| `nadir` | 0° | −89.9° | Straight down (top-down view) |
-| `cardinal` | 0° | −35° | North-facing oblique |
-| `east` | 90° | −35° | East-facing oblique |
-| `south` | 180° | −35° | South-facing oblique |
-| `west` | 270° | −35° | West-facing oblique |
-
----
-
-## Local Development (without Docker)
-
-```bash
-npm install
-npm run dev
+```json
+{
+  "status": "error",
+  "message": "Render timeout (10 minutes exceeded)",
+  "order_id": "test_001"
+}
 ```
 
-Then POST to `http://localhost:3000/api/render`.
+**cURL example:**
+
+```bash
+curl -X POST http://localhost:3000/api/render \
+  -H "Content-Type: application/json" \
+  -d '{
+    "order_id": "test_001",
+    "centroid": [-116.4869, 48.3322],
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[
+        [-116.486, 48.331],
+        [-116.487, 48.331],
+        [-116.487, 48.332],
+        [-116.486, 48.332],
+        [-116.486, 48.331]
+      ]]
+    }
+  }'
+```
 
 ---
 
-## Tech Stack
+## What It Does
 
-- **Next.js** — API routes + static file serving
-- **Cesium** — 3D globe rendering (via `public/render.html`)
-- **Puppeteer** — Headless Chromium screenshot capture
-- **Sharp** — Image processing / black-frame detection
+- Renders **5 PNG views** per property:
+  - `nadir` — straight-down view (heading 0°, pitch −89.9°)
+  - `cardinal` — north oblique (heading 0°, pitch −35°)
+  - `east` — east oblique (heading 90°, pitch −35°)
+  - `south` — south oblique (heading 180°, pitch −35°)
+  - `west` — west oblique (heading 270°, pitch −35°)
+- Draws a **yellow boundary overlay** (polyline, width 8, clamped to ground)
+- Runs **headless** via Puppeteer + Cesium + Google 3D Tiles
+- Processes shots **sequentially** (one at a time)
+- Outputs files to `public/snapshots/<order_id>/`
+
+## What It Doesn't Do
+
+- No PSD export
+- No road or label overlays
+- No email / webhook notifications
+- No multi-job concurrency (single render at a time)
