@@ -1,140 +1,158 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>VDC Renderer</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Render</title>
   <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
   <style>
-    * { margin: 0; padding: 0; }
-    html, body, #cesiumContainer { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    html, body, #cesiumContainer {
+      width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+    }
   </style>
 </head>
 <body>
   <div id="cesiumContainer"></div>
   <script>
-    (async function () {
+    (async () => {
+      const mission = window.__MISSION_DATA__;
+      if (!mission) {
+        console.error('No mission data found');
+        console.log('MISSION_ERROR');
+        return;
+      }
+
+      const { order_id, centroid, geometry, google_api_key, shots } = mission;
+
+      // ── No Cesium Ion assets used — Google 3D Tiles loaded directly ──────
+      Cesium.Ion.defaultAccessToken = '';
+
+      // ── Viewer ────────────────────────────────────────────────────────────
+      const viewer = new Cesium.Viewer('cesiumContainer', {
+        animation: false,
+        baseLayerPicker: false,
+        fullscreenButton: false,
+        geocoder: false,
+        homeButton: false,
+        infoBox: false,
+        sceneModePicker: false,
+        selectionIndicator: false,
+        timeline: false,
+        navigationHelpButton: false,
+        scene3DOnly: true,
+        contextOptions: { webgl: { preserveDrawingBuffer: true } },
+        imageryProvider: false
+      });
+
+      viewer.scene.globe.show = false;
+
+      // ── Google 3D Tiles ───────────────────────────────────────────────────
+      let tileset;
       try {
-        const MISSION = window.__MISSION_DATA__;
-        if (!MISSION) throw new Error('No __MISSION_DATA__ found on window');
-
-        // Set Google Maps API key for photorealistic tiles
-        if (MISSION.google_api_key) {
-          Cesium.GoogleMaps.defaultApiKey = MISSION.google_api_key;
-        }
-
-        // Initialise viewer — no default imagery layer (Google 3D tiles below)
-        const viewer = new Cesium.Viewer('cesiumContainer', {
-          imageryProvider: false,
-          baseLayerPicker: false,
-          geocoder: false,
-          homeButton: false,
-          sceneModePicker: false,
-          navigationHelpButton: false,
-          animation: false,
-          timeline: false,
-          fullscreenButton: false,
-          vrButton: false,
-          infoBox: false,
-          selectionIndicator: false,
-          shadows: false,
-          terrainShadows: Cesium.ShadowMode.DISABLED,
-          requestRenderMode: false
-        });
-
-        // Set FOV to 100 degrees
-        viewer.camera.frustum.fov = Cesium.Math.toRadians(100);
-
-        // Maximum tile detail before capture
-        viewer.scene.globe.maximumScreenSpaceError = 1.0;
-
-        // Load Google Photorealistic 3D Tiles
-        const tileset = await Cesium.createGooglePhotorealistic3DTileset();
+        tileset = await Cesium.Cesium3DTileset.fromUrl(
+          `https://tile.googleapis.com/v1/3dtiles/root.json?key=${google_api_key}`,
+          { skipLevelOfDetail: false }
+        );
         viewer.scene.primitives.add(tileset);
+      } catch (err) {
+        console.error('Failed to load Google 3D Tiles:', err.message);
+        console.log('MISSION_ERROR');
+        return;
+      }
 
-        // Hide the default globe — 3D tiles provide the surface
-        viewer.scene.globe.show = false;
+      // ── Boundary polyline ─────────────────────────────────────────────────
+      try {
+        const ring = geometry.coordinates[0];
+        const positions = ring.map(([lon, lat]) =>
+          Cesium.Cartesian3.fromDegrees(lon, lat)
+        );
+        viewer.entities.add({
+          polyline: {
+            positions,
+            width: 8,
+            material: Cesium.Color.YELLOW,
+            clampToGround: true
+          }
+        });
+      } catch (err) {
+        console.error('Failed to draw boundary polyline:', err.message);
+      }
 
-        // Draw property boundary — all rings supported (outer + holes)
-        const { geometry } = MISSION;
-        const rings = geometry.coordinates || [];
-        for (const ring of rings) {
-          const positions = ring.map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat));
-          viewer.entities.add({
-            polyline: {
-              positions,
-              width: 4,
-              material: Cesium.Color.YELLOW,
-              clampToGround: true
+      // ── Bounding sphere ───────────────────────────────────────────────────
+      const [lon, lat] = centroid;
+      const ring = geometry.coordinates[0];
+      const cartesians = ring.map(([lo, la]) => Cesium.Cartesian3.fromDegrees(lo, la));
+      const boundingSphere = Cesium.BoundingSphere.fromPoints(cartesians);
+
+      // ── Helpers ───────────────────────────────────────────────────────────
+      function waitForTiles(maxMs = 120000) {
+        return new Promise((resolve, reject) => {
+          const start = Date.now();
+          let stableTicks = 0;
+          const REQUIRED_TICKS = 3;
+          const TICK_MS = 300;
+
+          function check() {
+            if (Date.now() - start > maxMs) {
+              return reject(new Error('Tile load timeout'));
             }
-          });
-        }
-
-        // Bounding sphere derived from outer ring
-        const outerRing = rings[0] || [];
-        const bsPositions = outerRing.map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat));
-        const boundingSphere = Cesium.BoundingSphere.fromPoints(bsPositions);
-
-        // Shot definitions: nadir + 4 cardinal directions
-        const shots = [
-          { name: 'nadir',    heading:   0, pitch: -89.9, rangeMultiplier: 2.0 },
-          { name: 'cardinal', heading:   0, pitch:   -35, rangeMultiplier: 2.5 },
-          { name: 'east',     heading:  90, pitch:   -35, rangeMultiplier: 2.5 },
-          { name: 'south',    heading: 180, pitch:   -35, rangeMultiplier: 2.5 },
-          { name: 'west',     heading: 270, pitch:   -35, rangeMultiplier: 2.5 }
-        ];
-
-        // Wait for 3D tiles to stabilise: 3 consecutive ticks of 300 ms, 120 s timeout
-        function waitForTiles() {
-          const STABLE_TICKS  = 3;
-          const TICK_MS       = 300;
-          const TIMEOUT_MS    = 120000;
-          let stable          = 0;
-          const start         = Date.now();
-
-          return new Promise((resolve, reject) => {
-            function tick() {
-              if (Date.now() - start > TIMEOUT_MS) {
-                reject(new Error('Tile settle timeout (120 s)'));
-                return;
-              }
-              if (tileset.tilesLoaded) {
-                stable++;
-                if (stable >= STABLE_TICKS) { resolve(); return; }
-              } else {
-                stable = 0;
-              }
-              setTimeout(tick, TICK_MS);
+            const globeReady = viewer.scene.globe.tilesLoaded;
+            const tilesetReady = tileset.tilesLoaded;
+            if (globeReady && tilesetReady) {
+              stableTicks++;
+              if (stableTicks >= REQUIRED_TICKS) return resolve();
+            } else {
+              stableTicks = 0;
             }
-            setTimeout(tick, TICK_MS);
-          });
-        }
+            setTimeout(check, TICK_MS);
+          }
+          check();
+        });
+      }
 
-        // Fly to a shot instantly (duration: 0) then resolve on completion
-        function flyToShot(shot) {
-          return new Promise((resolve) => {
-            viewer.camera.flyToBoundingSphere(boundingSphere, {
-              offset: new Cesium.HeadingPitchRange(
-                Cesium.Math.toRadians(shot.heading),
-                Cesium.Math.toRadians(shot.pitch),
-                boundingSphere.radius * shot.rangeMultiplier
-              ),
-              duration: 0,
-              complete: resolve
-            });
+      function setCamera(heading, pitch, rangeMultiplier) {
+        return new Promise((resolve) => {
+          viewer.camera.flyToBoundingSphere(boundingSphere, {
+            duration: 0,
+            offset: new Cesium.HeadingPitchRange(
+              Cesium.Math.toRadians(heading),
+              Cesium.Math.toRadians(pitch),
+              boundingSphere.radius * rangeMultiplier
+            ),
+            complete: resolve
           });
-        }
+        });
+      }
 
-        // Sequential shot loop
-        for (const shot of shots) {
-          await flyToShot(shot);
+      // ── Shot definitions ──────────────────────────────────────────────────
+      const SHOT_CONFIG = {
+        nadir:    { heading:   0, pitch: -89.9, rangeMultiplier: 2.0 },
+        cardinal: { heading:   0, pitch:  -35,  rangeMultiplier: 2.5 },
+        east:     { heading:  90, pitch:  -35,  rangeMultiplier: 2.5 },
+        south:    { heading: 180, pitch:  -35,  rangeMultiplier: 2.5 },
+        west:     { heading: 270, pitch:  -35,  rangeMultiplier: 2.5 }
+      };
+
+      // ── Main render loop ──────────────────────────────────────────────────
+      try {
+        for (const shotName of shots) {
+          const cfg = SHOT_CONFIG[shotName];
+          if (!cfg) {
+            console.error(`Unknown shot: ${shotName}`);
+            continue;
+          }
+
+          await setCamera(cfg.heading, cfg.pitch, cfg.rangeMultiplier);
           await waitForTiles();
-          await window.capturePass(shot.name);
+
+          const ok = await window.capturePass(shotName);
+          if (!ok) throw new Error(`capturePass returned false for shot: ${shotName}`);
         }
 
         console.log('MISSION_COMPLETE');
       } catch (err) {
-        console.error('Render error:', err.message);
+        console.error('Mission failed:', err.message);
         console.log('MISSION_ERROR');
       }
     })();

@@ -2,15 +2,21 @@
   "name": "virtual-drone-creator",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "cesium": "^1.114.0",
-    "next": "14.2.35",
-    "puppeteer": "^24.4.0",
-    "sharp": "^0.34.1"
+    "puppeteer": "^24.34.0",
+    "sharp": "^0.34.5",
+    "next": "15.2.9"
+  },
+  "devDependencies": {
+    "eslint": "^8",
+    "eslint-config-next": "15.2.9"
   }
 }
