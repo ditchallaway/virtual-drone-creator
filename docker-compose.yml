@@ -9,3 +9,9 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
     volumes:
       - ./data/jobs:/data/jobs
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 15s
