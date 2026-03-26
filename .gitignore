@@ -1,7 +1,8 @@
 node_modules/
 .next/
 .env.local
-public/snapshots/
+public/snapshots/*
+!public/snapshots/.gitkeep
 *.log
 .DS_Store
 .vscode/
