@@ -4,21 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "test1": "node tests/test1.js",
-    "test2": "node tests/test2.js"
+    "dev": "node --env-file=.env.local server.js",
+    "start": "node server.js",
+    "test:1": "node tests/test-1-environment.js"
   },
   "dependencies": {
-    "cesium": "^1.114.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.1",
     "puppeteer": "^24.34.0",
-    "sharp": "^0.34.5",
-    "next": "15.2.9"
-  },
-  "devDependencies": {
-    "eslint": "^8",
-    "eslint-config-next": "15.2.9"
+    "sharp": "^0.34.5"
   }
 }
