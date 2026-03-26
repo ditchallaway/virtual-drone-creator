@@ -1,14 +1,11 @@
-version: '3.8'
+version: '3.9'
+
 services:
   vdc:
-    image: your-docker-image-here
+    build: .
     ports:
       - "3000:3000"
     environment:
-      - ENV_VAR1=value1
-      - ENV_VAR2=value2
+      NEXT_PUBLIC_GOOGLE_API_KEY: ${NEXT_PUBLIC_GOOGLE_API_KEY}
     volumes:
-      - snapshots:/path/to/snapshots
-
-volumes:
-  snapshots:
+      - ./public/snapshots:/app/public/snapshots

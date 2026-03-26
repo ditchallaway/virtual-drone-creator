@@ -1,20 +1,23 @@
-# Use the official lightweight Node.js 20 Alpine image
-FROM node:20-alpine
+FROM node:20-slim
 
-# Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Install Chromium and required system libraries for Puppeteer
+RUN apt-get update && apt-get install -y \
+    chromium \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Point Puppeteer to system Chromium (skip bundled download)
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+COPY package*.json ./
 RUN npm ci
 
-# Copy the rest of the application code
 COPY . .
+RUN npm run build
 
-# Build the application (if applicable)
-# RUN npm run build # Uncomment if you have a build step
+EXPOSE 3000
 
-# Command to run the application
 CMD ["npm", "start"]
