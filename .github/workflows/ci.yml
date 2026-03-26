@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and start service
+        run: docker compose up -d --build
+
+      - name: Wait for service to become healthy
+        # 'docker compose wait' waits for containers to exit, not become healthy.
+        # We poll the health status reported by the Docker daemon instead.
+        run: |
+          echo "Waiting for vdc to become healthy..."
+          timeout 120 bash -c '
+            until docker inspect \
+              --format "{{.State.Health.Status}}" \
+              $(docker compose ps -q vdc) 2>/dev/null \
+              | grep -q "^healthy$"; do
+              echo "Still waiting..."
+              sleep 5
+            done
+          '
+          echo "Service is healthy."
+
+      - name: Smoke test inside container
+        run: |
+          docker compose exec -T vdc node -e \
+            "require('http').get('http://localhost:3000/render.html', r => {
+              console.log('HTTP', r.statusCode);
+              process.exit(r.statusCode === 200 ? 0 : 1);
+            }).on('error', e => { console.error(e.message); process.exit(1); })"
+
+      - name: Stop service
+        if: always()
+        run: docker compose down
