@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node --env-file=.env.local server.js",
     "start": "node server.js",
-    "test:1": "node tests/test-1-environment.js"
+    "test:1": "node tests/test-1-environment.js",
+    "test1": "node tests/test1.js",
+    "test2": "node tests/test2.js"
   },
   "dependencies": {
     "express": "^5.2.1",
