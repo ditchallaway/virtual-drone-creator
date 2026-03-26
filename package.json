@@ -7,7 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test1": "node tests/test1.js",
+    "test2": "node tests/test2.js"
   },
   "dependencies": {
     "cesium": "^1.114.0",
