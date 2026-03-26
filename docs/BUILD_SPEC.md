@@ -17,14 +17,14 @@ The service exposes one HTTP endpoint (`POST /render`). It processes exactly one
 | Layer | Technology | Version |
 |---|---|---|
 | Runtime | Node.js | 20 (Alpine) |
-| Web framework | Next.js | ^12.0.7 |
+| Web framework | Express | ^5.2.1 |
 | 3D rendering engine | Cesium | ^1.89.0 |
 | Browser automation | Puppeteer | ^20.3.7 |
 | Image validation | Sharp | ^0.30.8 |
 | Container | Docker | — |
 
 Environment variable required:
-- `NEXT_PUBLIC_GOOGLE_API_KEY` — Google Maps API key (set in `.env.local`)
+- `GOOGLE_API_KEY` — Google Maps API key (set in `.env.local`)
 
 ---
 
@@ -201,8 +201,8 @@ The service **does not notify** downstream consumers — they must poll.
 
 | Item | Location |
 |---|---|
-| Next.js API skeleton (`POST /render`) | `pages/api/render.js` |
-| Puppeteer browser launch + screenshot wiring | `pages/api/render.js` |
+| Express HTTP server (`POST /api/render`) | `server.js` |
+| Puppeteer browser launch + screenshot wiring | `server.js` |
 | Docker build & compose files | `Dockerfile`, `docker-compose.yml` |
 | `package.json` with correct dependencies | `package.json` |
 | Full API + filesystem specification | `docs/10-handoff.md` |
