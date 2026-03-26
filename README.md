@@ -120,9 +120,4 @@ curl -X POST http://localhost:3000/api/render \
 - Processes shots **sequentially** (one at a time)
 - Outputs files to `public/snapshots/<order_id>/`
 
-## What It Doesn't Do
 
-- No PSD export
-- No road or label overlays
-- No email / webhook notifications
-- No multi-job concurrency (single render at a time)
