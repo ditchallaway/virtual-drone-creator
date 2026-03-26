@@ -6,6 +6,6 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_GOOGLE_API_KEY: ${NEXT_PUBLIC_GOOGLE_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
     volumes:
-      - ./public/snapshots:/app/public/snapshots
+      - ./data/jobs:/data/jobs
