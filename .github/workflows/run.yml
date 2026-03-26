@@ -1,0 +1,22 @@
+name: Run App in Docker
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create required folders
+        run: mkdir -p data/jobs
+
+      - name: Create .env file
+        run: echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env
+
+      - name: Build and run with docker compose
+        run: docker compose up --build --abort-on-container-exit
