@@ -68,7 +68,7 @@ async function test1() {
     let containerUp = false;
     try {
         // docker-compose ps lists running services; filter blank lines
-        const ps = run('docker-compose ps --services --filter status=running');
+        const ps = run('docker compose ps --services --filter status=running');
         containerUp = ps.split('\n').filter(Boolean).length > 0;
     } catch {
         containerUp = false;
@@ -76,7 +76,7 @@ async function test1() {
 
     if (!containerUp) {
         info('Container is not running — starting with docker-compose up -d...');
-        const result = spawnSync('docker-compose', ['up', '-d', '--build'], {
+        const result = spawnSync('docker', ['compose', 'up', '-d', '--build'], {
             cwd: ROOT,
             stdio: 'inherit',
             encoding: 'utf8'
@@ -91,7 +91,7 @@ async function test1() {
         let ready = false;
         while (Date.now() < deadline) {
             try {
-                run(`docker-compose ps --services --filter status=running`);
+                run(`docker compose ps --services --filter status=running`);
                 // Simple TCP check via curl (lightweight, no Puppeteer overhead here)
                 run(`curl -sf --max-time 2 http://localhost:${hostPort}`);
                 ready = true;
