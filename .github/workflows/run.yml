@@ -20,3 +20,9 @@ jobs:
 
       - name: Build and run with docker compose
         run: docker compose up --build -d --wait
+        env:
+          COMPOSE_HTTP_TIMEOUT: 300
+
+      - name: Check container status
+        if: failure()
+        run: docker compose logs
