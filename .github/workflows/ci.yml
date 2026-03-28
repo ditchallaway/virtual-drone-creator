@@ -14,6 +14,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build and start service
         run: docker compose up -d --build
 
@@ -33,13 +42,11 @@ jobs:
           '
           echo "Service is healthy."
 
-      - name: Smoke test inside container
-        run: |
-          docker compose exec -T vdc node -e \
-            "require('http').get('http://localhost:3000/render.html', r => {
-              console.log('HTTP', r.statusCode);
-              process.exit(r.statusCode === 200 ? 0 : 1);
-            }).on('error', e => { console.error(e.message); process.exit(1); })"
+      - name: Run test1 (Cesium viewer initialisation)
+        run: npm run test1
+
+      - name: Run test2 (Cesium viewer screenshot)
+        run: npm run test2
 
       - name: Stop service
         if: always()
