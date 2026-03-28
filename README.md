@@ -1,5 +1,7 @@
 # Virtual Drone Creator
 
+[![CI](https://github.com/ditchallaway/virtual-drone-creator/actions/workflows/ci.yml/badge.svg)](https://github.com/ditchallaway/virtual-drone-creator/actions/workflows/ci.yml)
+
 Headless rendering service for property aerial photography.
 
 ---
