@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data/jobs:/data/jobs
     healthcheck:
-      test: ["CMD", "node", "healthcheck.js"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 5s
       timeout: 10s
       retries: 12

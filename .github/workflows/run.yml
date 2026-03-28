@@ -19,4 +19,4 @@ jobs:
         run: echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env
 
       - name: Build and run with docker compose
-        run: docker compose up --build --abort-on-container-exit
+        run: docker compose up --build -d --wait
